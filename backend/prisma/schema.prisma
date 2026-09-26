@@ -1,0 +1,402 @@
+// ============================================
+// Cooperative Gig Services Platform
+// Database Schema — Phase 1 (SQLite for local demo)
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ---- Models ----
+
+model User {
+  id              String    @id @default(cuid())
+  name            String
+  mobile          String    @unique
+  email           String?   @unique
+  passwordHash    String
+  role            String    // CUSTOMER | WORKER | ADMIN
+  profilePhoto    String?
+  preferredLanguage String  @default("en")
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customerProfile CustomerProfile?
+  workerProfile   WorkerProfile?
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model CustomerProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  communityRequests CommunityRequest[]
+
+  @@map("customer_profiles")
+}
+
+model WorkerProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  categoryId         String?
+  yearsOfExperience  Int                @default(0)
+  cooperativeId      String?
+  verificationStatus String             @default("PENDING") // PENDING | VERIFIED | REJECTED
+  availabilityStatus String             @default("OFFLINE") // ONLINE | OFFLINE | BUSY
+  serviceZoneId      String?
+  bio                String?
+  rejectionReason    String?
+  latitude           Float?
+  longitude          Float?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    ServiceCategory? @relation(fields: [categoryId], references: [id])
+  cooperative Cooperative?     @relation(fields: [cooperativeId], references: [id])
+  zone        ServiceZone?     @relation(fields: [serviceZoneId], references: [id])
+  skills      WorkerSkill[]
+  certificate Certificate?
+  testAttempts TestAttempt[]
+  portfolio   PortfolioItem[]
+  bookings    Booking[]
+
+  @@map("worker_profiles")
+}
+
+model WorkerSkill {
+  id             String             @id @default(cuid())
+  workerId       String
+  subcategoryId  String
+  worker         WorkerProfile      @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  subcategory    ServiceSubcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  @@map("worker_skills")
+}
+
+model Certificate {
+  id             String        @id @default(cuid())
+  workerId       String        @unique
+  name           String
+  number         String
+  issuer         String
+  year           String
+  fileUrl        String
+  worker         WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  @@map("certificates")
+}
+
+model TestQuestion {
+  id            String          @id @default(cuid())
+  categoryId    String
+  question      String
+  options       String          // Stringified JSON array of options
+  correctOption Int             // Index of correct option
+  category      ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@map("test_questions")
+}
+
+model TestAttempt {
+  id         String        @id @default(cuid())
+  workerId   String
+  categoryId String
+  score      Int
+  passed     Boolean
+  createdAt  DateTime      @default(now())
+  worker     WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  @@map("test_attempts")
+}
+
+model PortfolioItem {
+  id              String        @id @default(cuid())
+  workerId        String
+  title           String
+  description     String?
+  fileUrl         String
+  fileType        String        // "IMAGE" or "VIDEO"
+  experienceYears Int?          // For work verification
+  status          String        @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt       DateTime      @default(now())
+  worker          WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  @@map("portfolio_items")
+}
+
+model Cooperative {
+  id                 String            @id @default(cuid())
+  name               String
+  registrationNumber String?           @unique
+  contactEmail       String?
+  contactPhone       String?
+  address            String?
+  city               String?
+  state              String?
+  status             String            @default("ACTIVE") // ACTIVE | INACTIVE | SUSPENDED
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  workers WorkerProfile[]
+
+  @@map("cooperatives")
+}
+
+model ServiceCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subcategories ServiceSubcategory[]
+  workers       WorkerProfile[]
+  testQuestions TestQuestion[]
+  bookings      Booking[]
+  communityRequestItems CommunityRequestItem[]
+
+  @@map("service_categories")
+}
+
+model ServiceSubcategory {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  workerSkills WorkerSkill[]
+  bookings     Booking[]
+
+  @@map("service_subcategories")
+}
+
+model Booking {
+  id                 String             @id @default(cuid())
+  customerId         String
+  workerId           String?            // Nullable for community requests until assigned
+  categoryId         String
+  subcategoryId      String
+  zoneId             String?
+  communityRequestId String?
+  address            String
+  customerLat        Float?
+  customerLng        Float?
+  scheduledDate      DateTime
+  status             String             @default("PENDING") // PENDING | ASSIGNED | TRAVELLING | ARRIVED | WORKING | COMPLETED | CANCELLED
+  isEmergency        Boolean            @default(false)
+  price              Float?
+  basePrice          Float?
+  workloadAdjustment Float?
+  emergencySurcharge Float?
+  finalAmount        Float?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  customer           CustomerProfile    @relation(fields: [customerId], references: [id])
+  worker             WorkerProfile?     @relation(fields: [workerId], references: [id])
+  category           ServiceCategory    @relation(fields: [categoryId], references: [id])
+  subcategory        ServiceSubcategory @relation(fields: [subcategoryId], references: [id])
+  zone               ServiceZone?       @relation(fields: [zoneId], references: [id])
+  communityRequest   CommunityRequest?  @relation(fields: [communityRequestId], references: [id])
+  statusHistory      BookingStatusHistory[]
+  payment            Payment?
+  invoice            Invoice?
+  rating             Rating?
+  evidence           ServiceEvidence[]
+  complaint          Complaint?
+
+  @@map("bookings")
+}
+
+model BookingStatusHistory {
+  id          String   @id @default(cuid())
+  bookingId   String
+  status      String
+  timestamp   DateTime @default(now())
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_status_history")
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  bookingId        String   @unique
+  customerId       String
+  workerId         String
+  amount           Float
+  status           String   @default("PENDING") // PENDING | SUCCESS | FAILED | REFUNDED
+  paymentReference String?
+  paymentMethod    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  invoice          Invoice?
+
+  @@map("payments")
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  paymentId     String   @unique
+  invoiceNumber String   @unique
+  amount        Float
+  createdAt     DateTime @default(now())
+
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+model Rating {
+  id              String   @id @default(cuid())
+  bookingId       String   @unique
+  customerId      String
+  workerId        String
+  rating          Int      // 1-5
+  quality         Int?     // 1-5
+  professionalism Int?     // 1-5
+  timeliness      Int?     // 1-5
+  feedback        String?
+  createdAt       DateTime @default(now())
+
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("ratings")
+}
+
+model ServiceEvidence {
+  id          String   @id @default(cuid())
+  bookingId   String
+  uploadedBy  String
+  type        String   // BEFORE_PHOTO | AFTER_PHOTO | VIDEO
+  fileUrl     String
+  description String?
+  createdAt   DateTime @default(now())
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("service_evidence")
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  bookingId   String   @unique
+  customerId  String
+  category    String
+  description String
+  status      String   @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("complaints")
+}
+
+model ServiceZone {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  latitude    Float
+  longitude   Float
+  radiusKm    Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workers         WorkerProfile[]
+  bookings        Booking[]
+  sentRequests    ZoneSupportRequest[] @relation("FromZone")
+  receivedRequests ZoneSupportRequest[] @relation("ToZone")
+
+  @@map("service_zones")
+}
+
+model ZoneSupportRequest {
+  id          String   @id @default(cuid())
+  fromZoneId  String
+  toZoneId    String
+  status      String   @default("PENDING") // PENDING | APPROVED | RESOLVED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fromZone    ServiceZone @relation("FromZone", fields: [fromZoneId], references: [id], onDelete: Cascade)
+  toZone      ServiceZone @relation("ToZone", fields: [toZoneId], references: [id], onDelete: Cascade)
+
+  @@map("zone_support_requests")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // INFO, SUCCESS, WARNING, ERROR, EMERGENCY
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+model CommunityRequest {
+  id                 String                 @id @default(cuid())
+  customerId         String
+  address            String
+  scheduledDate      DateTime
+  description        String?
+  status             String                 @default("PENDING") // PENDING | PARTIALLY_ASSIGNED | FULLY_ASSIGNED | IN_PROGRESS | COMPLETED | CANCELLED
+  totalEstimatedAmount Float?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  customer           CustomerProfile        @relation(fields: [customerId], references: [id])
+  items              CommunityRequestItem[]
+  bookings           Booking[]              // Links to individual bookings created for this request
+
+  @@map("community_requests")
+}
+
+model CommunityRequestItem {
+  id                 String           @id @default(cuid())
+  communityRequestId String
+  categoryId         String
+  workerCount        Int
+  createdAt          DateTime         @default(now())
+
+  communityRequest   CommunityRequest @relation(fields: [communityRequestId], references: [id], onDelete: Cascade)
+  category           ServiceCategory  @relation(fields: [categoryId], references: [id])
+
+  @@map("community_request_items")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  customerId String
+  workerId   String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+}
