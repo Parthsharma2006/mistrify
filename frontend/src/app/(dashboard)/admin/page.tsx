@@ -5,9 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import {
   Users, Briefcase, Building2, ShieldAlert, Clock,
-  MapPin, Activity, Sparkles, ChevronDown, CheckCircle, Loader2, LogOut
+  MapPin, Activity, Sparkles, ChevronDown, CheckCircle,
+  Loader2, LogOut, ChevronRight, Phone, Star, X
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface DashboardStats {
   totalWorkers: number;
@@ -16,103 +18,115 @@ interface DashboardStats {
   pendingVerifications: number;
 }
 
+type Worker = { id: string; name: string; mobile: string; category: string; status: string; rating: number | null; };
+type Customer = { id: string; name: string; mobile: string; city: string; };
+type Cooperative = { id: string; name: string; city: string; state: string; workerCount: number; };
+
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(true);
   const [isAiExpanded, setIsAiExpanded] = useState(false);
+
+  // Drawer state
+  const [drawer, setDrawer] = useState<null | 'workers' | 'cooperatives'>(null);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [cooperatives, setCooperatives] = useState<Cooperative[]>([]);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+
   const handleReassign = async () => {
     try {
       const res = await fetch('/api/admin/reassign-expired', { method: 'POST', body: JSON.stringify({ maxDelayMinutes: 30 }) });
       const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-      } else {
-        alert('Failed: ' + data.error);
-      }
-    } catch (e) {
-      alert('Error running reassignment workflow');
-    }
+      alert(data.success ? data.message : 'Failed: ' + data.error);
+    } catch (e) { alert('Error running reassignment workflow'); }
   };
 
   useEffect(() => {
     fetch("/api/admin/stats")
       .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setStats(data.data);
-      })
+      .then((data) => { if (data.success) setStats(data.data); })
       .catch(console.error)
       .finally(() => setLoading(false));
 
     fetch("/api/admin/ai-insights")
       .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setAiInsights(data.data.insights);
-      })
+      .then((data) => { if (data.success) setAiInsights(data.data.insights); })
       .catch(console.error)
       .finally(() => setAiLoading(false));
   }, []);
 
+  const openDrawer = async (type: 'workers' | 'cooperatives') => {
+    setDrawer(type);
+    setDrawerLoading(true);
+    try {
+      if (type === 'workers') {
+        const [wRes, cRes] = await Promise.all([
+          fetch('/api/admin/users?role=WORKER'),
+          fetch('/api/admin/users?role=CUSTOMER'),
+        ]);
+        const wData = await wRes.json();
+        const cData = await cRes.json();
+        if (wData.success) setWorkers(wData.data);
+        if (cData.success) setCustomers(cData.data);
+      } else {
+        const res = await fetch('/api/admin/cooperatives-list');
+        const data = await res.json();
+        if (data.success) setCooperatives(data.data);
+      }
+    } catch (e) { console.error(e); }
+    finally { setDrawerLoading(false); }
+  };
+
   const statCards = [
     {
-      icon: Briefcase,
-      label: "Workers",
-      value: stats?.totalWorkers ?? 0,
+      icon: Briefcase, label: "Workers", value: stats?.totalWorkers ?? 0,
       color: "from-violet-500 to-blue-600",
+      onClick: () => openDrawer('workers'),
     },
     {
-      icon: Users,
-      label: "Customers",
-      value: stats?.totalCustomers ?? 0,
+      icon: Users, label: "Customers", value: stats?.totalCustomers ?? 0,
       color: "from-amber-500 to-green-500",
+      onClick: () => openDrawer('workers'),
     },
     {
-      icon: Building2,
-      label: "Cooperatives",
-      value: stats?.totalCooperatives ?? 0,
+      icon: Building2, label: "Cooperatives", value: stats?.totalCooperatives ?? 0,
       color: "from-purple-500 to-fuchsia-500",
+      onClick: () => openDrawer('cooperatives'),
     },
     {
-      icon: ShieldAlert,
-      label: "Pending",
-      value: stats?.pendingVerifications ?? 0,
+      icon: ShieldAlert, label: "Pending", value: stats?.pendingVerifications ?? 0,
       color: "from-amber-500 to-orange-500",
       alert: (stats?.pendingVerifications ?? 0) > 0,
+      onClick: () => router.push('/admin/verification'),
     },
   ];
 
   const quickActions = [
-    { icon: CheckCircle, label: "Verify Workers", color: "text-amber-400", bg: "bg-amber-400/10" },
-    { icon: MapPin, label: "Manage Zones", color: "text-violet-400", bg: "bg-violet-400/10" },
-    { icon: Activity, label: "Transactions", color: "text-green-400", bg: "bg-green-400/10" },
+    { icon: CheckCircle, label: "Verify Workers", color: "text-amber-400", bg: "bg-amber-400/10", href: "/admin/verification" },
+    { icon: MapPin, label: "Manage Zones", color: "text-violet-400", bg: "bg-violet-400/10", href: "/admin/zones" },
+    { icon: Activity, label: "Transactions", color: "text-green-400", bg: "bg-green-400/10", href: "/admin/transactions" },
     { icon: Clock, label: "Reassign Delays", color: "text-red-400", bg: "bg-red-400/10", onClick: handleReassign },
     { icon: Sparkles, label: "AI Insights", color: "text-fuchsia-400", bg: "bg-fuchsia-400/10", onClick: () => setIsAiExpanded(true) },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } },
-  };
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+  const itemVariants = { hidden: { y: 15, opacity: 0 }, show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } } };
 
-  const itemVariants = {
-    hidden: { y: 15, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#07070f]">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-[#07070f]">
+      <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#07070f] px-5 pt-safe pb-24 overflow-x-hidden">
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-md mx-auto space-y-8 mt-6">
-        
-        {/* Top Section */}
+
+        {/* Header */}
         <motion.div variants={itemVariants} className="flex justify-between items-start">
           <div>
             <h1 className="text-[24px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 tracking-tight">
@@ -122,19 +136,22 @@ export default function AdminDashboard() {
               {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <button 
+          <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 font-bold tracking-wide transition-all active:scale-[0.98] text-xs"
           >
-            <LogOut className="w-4 h-4" />
-            LOGOUT
+            <LogOut className="w-4 h-4" /> LOGOUT
           </button>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — all clickable */}
         <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
           {statCards.map((stat, idx) => (
-            <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 relative overflow-hidden backdrop-blur-md">
+            <button
+              key={idx}
+              onClick={stat.onClick}
+              className="bg-white/5 border border-white/10 rounded-2xl p-4 relative overflow-hidden backdrop-blur-md text-left active:scale-[0.97] transition-transform hover:bg-white/8"
+            >
               <div className={`absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-bl ${stat.color} rounded-full blur-[30px] opacity-20`} />
               <div className="flex items-center justify-between mb-3">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
@@ -148,8 +165,11 @@ export default function AdminDashboard() {
                 )}
               </div>
               <h3 className="text-2xl font-bold text-white mb-0.5">{stat.value}</h3>
-              <p className="text-xs text-gray-400 font-medium">{stat.label}</p>
-            </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400 font-medium">{stat.label}</p>
+                <ChevronRight className="w-3 h-3 text-gray-600" />
+              </div>
+            </button>
           ))}
         </motion.div>
 
@@ -158,16 +178,29 @@ export default function AdminDashboard() {
           <h2 className="text-sm font-semibold text-white">Quick Actions</h2>
           <div className="flex overflow-x-auto gap-3 pb-2 hide-scrollbar -mx-5 px-5">
             {quickActions.map((action, idx) => (
-              <button 
-                key={idx}
-                onClick={action.onClick}
-                className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-3 whitespace-nowrap min-w-max active:bg-white/10 transition-colors"
-              >
-                <div className={`w-8 h-8 rounded-full ${action.bg} flex items-center justify-center`}>
-                  <action.icon className={`w-4 h-4 ${action.color}`} />
-                </div>
-                <span className="text-sm font-medium text-gray-200 pr-2">{action.label}</span>
-              </button>
+              action.href ? (
+                <Link
+                  key={idx}
+                  href={action.href}
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-3 whitespace-nowrap min-w-max active:bg-white/10 transition-colors"
+                >
+                  <div className={`w-8 h-8 rounded-full ${action.bg} flex items-center justify-center`}>
+                    <action.icon className={`w-4 h-4 ${action.color}`} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200 pr-2">{action.label}</span>
+                </Link>
+              ) : (
+                <button
+                  key={idx}
+                  onClick={action.onClick}
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-3 whitespace-nowrap min-w-max active:bg-white/10 transition-colors"
+                >
+                  <div className={`w-8 h-8 rounded-full ${action.bg} flex items-center justify-center`}>
+                    <action.icon className={`w-4 h-4 ${action.color}`} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200 pr-2">{action.label}</span>
+                </button>
+              )
             ))}
           </div>
         </motion.div>
@@ -176,10 +209,7 @@ export default function AdminDashboard() {
         <motion.div variants={itemVariants} className="relative rounded-3xl p-[1px] overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 animate-[rotateGlow_4s_linear_infinite] opacity-50" />
           <div className="relative bg-[#07070f]/95 backdrop-blur-2xl rounded-[23px] overflow-hidden">
-            <button 
-              onClick={() => setIsAiExpanded(!isAiExpanded)}
-              className="w-full flex items-center justify-between p-5 text-left"
-            >
+            <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="w-full flex items-center justify-between p-5 text-left">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg">
                   <Sparkles className="w-5 h-5 text-white" />
@@ -191,16 +221,9 @@ export default function AdminDashboard() {
               </div>
               <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isAiExpanded ? "rotate-180" : ""}`} />
             </button>
-            
             <AnimatePresence>
               {isAiExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="px-5 pb-5"
-                >
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3 }} className="px-5 pb-5">
                   <div className="pt-4 border-t border-white/10">
                     {aiLoading ? (
                       <div className="flex flex-col items-center justify-center py-6 space-y-3">
@@ -230,7 +253,7 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* Zone Management Section */}
+        {/* Zone Management */}
         <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">Zone Management</h2>
@@ -240,6 +263,127 @@ export default function AdminDashboard() {
         </motion.div>
 
       </motion.div>
+
+      {/* ── BOTTOM SHEET DRAWER ── */}
+      <AnimatePresence>
+        {drawer && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setDrawer(null)}
+              className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+            />
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-[#0f0f1a] border-t border-white/10 rounded-t-3xl max-h-[80vh] flex flex-col"
+            >
+              {/* Handle */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+                <h2 className="text-base font-bold text-white">
+                  {drawer === 'workers' ? 'Workers & Customers' : 'Cooperative Societies'}
+                </h2>
+                <button onClick={() => setDrawer(null)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4 pb-10">
+                {drawerLoading ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                  </div>
+                ) : drawer === 'workers' ? (
+                  <>
+                    {/* Workers */}
+                    <div>
+                      <h3 className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Briefcase className="w-3.5 h-3.5" /> Workers ({workers.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {workers.length === 0 ? (
+                          <p className="text-sm text-gray-500">No workers found.</p>
+                        ) : workers.map(w => (
+                          <div key={w.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                            <div>
+                              <p className="text-sm font-bold text-white">{w.name}</p>
+                              <p className="text-xs text-gray-400">{w.category}</p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Phone className="w-3 h-3 text-gray-600" />
+                                <span className="text-xs text-gray-500">{w.mobile}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${w.status === 'VERIFIED' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                {w.status}
+                              </span>
+                              {w.rating && (
+                                <div className="flex items-center gap-1 mt-1 justify-end">
+                                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                  <span className="text-xs text-amber-300">{w.rating.toFixed(1)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Customers */}
+                    <div>
+                      <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5" /> Customers ({customers.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {customers.length === 0 ? (
+                          <p className="text-sm text-gray-500">No customers found.</p>
+                        ) : customers.map(c => (
+                          <div key={c.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                            <div>
+                              <p className="text-sm font-bold text-white">{c.name}</p>
+                              <p className="text-xs text-gray-400">{c.city || 'City not set'}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-gray-600" />
+                              <span className="text-xs text-gray-400">{c.mobile}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Cooperatives */
+                  <div>
+                    <h3 className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5" /> All Cooperatives ({cooperatives.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {cooperatives.length === 0 ? (
+                        <p className="text-sm text-gray-500">No cooperatives found.</p>
+                      ) : cooperatives.map(co => (
+                        <div key={co.id} className="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-bold text-white">{co.name}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{co.city}, {co.state}</p>
+                            </div>
+                            <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-1 rounded-full font-bold">
+                              {co.workerCount ?? 0} workers
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -249,13 +393,7 @@ function ZoneList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/zones")
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setZones(data.data);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetch("/api/admin/zones").then(res => res.json()).then(data => { if (data.success) setZones(data.data); }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="text-center py-4 text-xs text-gray-500">Loading zones...</div>;

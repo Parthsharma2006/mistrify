@@ -114,8 +114,8 @@ export default function TrackOrderPage() {
 
   // Update dynamic descriptions based on actual data
   const statuses = ALL_STATUSES.map(s => {
-    if (s.id === 'ASSIGNED') return { ...s, description: `${workerName} (${workerCategory}) is assigned.` };
-    if (s.id === 'TRAVELLING') return { ...s, description: `${workerName} is heading to your location.` };
+    if (s.id === 'ASSIGNED') return { ...s, description: `₹{workerName} (${workerCategory}) is assigned.` };
+    if (s.id === 'TRAVELLING') return { ...s, description: `₹{workerName} is heading to your location.` };
     return s;
   });
 
@@ -241,7 +241,7 @@ export default function TrackOrderPage() {
           {/* Active Track Line (Progress) */}
           <motion.div 
             initial={{ height: 0 }}
-            animate={{ height: `${(displayIndex / (statuses.length - 1)) * 100}%` }}
+            animate={{ height: `₹{(displayIndex / (statuses.length - 1)) * 100}%` }}
             transition={{ duration: 1, ease: "easeInOut" }}
             className="absolute left-[33px] top-6 w-0.5 bg-gradient-to-b from-fuchsia-500 to-violet-500" 
           />

@@ -124,7 +124,7 @@ export default function MatchWorkersPage() {
                 <div className="pt-3 border-t border-white/5 flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-300 flex items-center gap-1">
                     <MapPin className="w-4 h-4 text-violet-500" /> 
-                    {worker.distance !== null ? `${worker.distance.toFixed(1)} km away` : "Unknown distance"}
+                    {worker.distance !== null ? `₹{worker.distance.toFixed(1)} km away` : "Unknown distance"}
                   </span>
                   <span className="text-sm font-bold text-violet-400 group-hover:text-violet-300 transition-colors">Select &rarr;</span>
                 </div>

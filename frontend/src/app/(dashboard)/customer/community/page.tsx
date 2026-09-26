@@ -68,10 +68,10 @@ export default function CommunityServicesPage() {
         if (data && data.display_name) {
           setAddress(data.display_name);
         } else {
-          setAddress(`${latitude}, ${longitude}`);
+          setAddress(`₹{latitude}, ${longitude}`);
         }
       } catch (e) {
-        setAddress(`${latitude}, ${longitude}`);
+        setAddress(`₹{latitude}, ${longitude}`);
       }
     } catch (error) {
       console.error("Error getting location:", error);
@@ -84,7 +84,7 @@ export default function CommunityServicesPage() {
     
     setIsSubmitting(true);
     try {
-      const scheduledDate = new Date(`${date}T${time}`).toISOString();
+      const scheduledDate = new Date(`₹{date}T${time}`).toISOString();
       const res = await fetch("/api/customers/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

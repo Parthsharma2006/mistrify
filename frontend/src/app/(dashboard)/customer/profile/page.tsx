@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  User, Briefcase, DollarSign, Clock, AlertTriangle,
+  User, Briefcase, IndianRupee, Clock, AlertTriangle,
   Phone, Mail, MapPin, Globe, Edit3, Save, X, Loader2, LogOut
 } from "lucide-react";
 

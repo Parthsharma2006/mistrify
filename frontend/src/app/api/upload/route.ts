@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     // Create unique filename
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const filename = `${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const uniqueSuffix = `₹{Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const filename = `₹{uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     
     const uploadDir = join(process.cwd(), "public", folderName);
     

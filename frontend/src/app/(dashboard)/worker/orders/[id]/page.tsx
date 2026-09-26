@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, MapPin, Calendar, Clock, Crosshair, Navigation, Camera, Upload, Star, DollarSign, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin, Calendar, Clock, Crosshair, Navigation, Camera, Upload, Star, IndianRupee, CheckCircle } from "lucide-react";
 
 export default function WorkerOrderDetail() {
   const { id } = useParams();
@@ -131,7 +131,7 @@ export default function WorkerOrderDetail() {
         const evRes = await fetch(`/api/bookings/${id}/evidence`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type, fileUrl: uploadData.url, description: `${type} uploaded by worker` })
+          body: JSON.stringify({ type, fileUrl: uploadData.url, description: `₹{type} uploaded by worker` })
         });
         const evData = await evRes.json();
         if (evData.success) {
@@ -284,7 +284,7 @@ export default function WorkerOrderDetail() {
                 <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/10">
                   <label className="block text-sm text-gray-300 font-medium mb-2">Final Amount ($)</label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
                       type="number"
                       value={finalAmount}

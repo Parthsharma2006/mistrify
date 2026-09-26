@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, TrendingUp, Calendar, CheckCircle, Clock, Loader2 } from "lucide-react";
+import { IndianRupee, TrendingUp, Calendar, CheckCircle, Clock, Loader2 } from "lucide-react";
 
 export default function WorkerEarningsPage() {
   const [data, setData] = useState<any>(null);
@@ -18,10 +18,10 @@ export default function WorkerEarningsPage() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-green-500" /></div>;
 
   const stats = [
-    { icon: DollarSign, label: "Today", value: data?.todayEarnings || 0, bg: "bg-green-500/10" },
+    { icon: IndianRupee, label: "Today", value: data?.todayEarnings || 0, bg: "bg-green-500/10" },
     { icon: TrendingUp, label: "This Week", value: data?.weekEarnings || 0, bg: "bg-teal-500/10" },
     { icon: Calendar, label: "This Month", value: data?.monthEarnings || 0, bg: "bg-blue-500/10" },
-    { icon: DollarSign, label: "Total Earnings", value: data?.totalEarnings || 0, bg: "bg-purple-500/10" },
+    { icon: IndianRupee, label: "Total Earnings", value: data?.totalEarnings || 0, bg: "bg-purple-500/10" },
   ];
 
   return (
@@ -81,7 +81,7 @@ export default function WorkerEarningsPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <DollarSign className="w-12 h-12 text-green-500/30 mx-auto mb-4" />
+              <IndianRupee className="w-12 h-12 text-green-500/30 mx-auto mb-4" />
               <p className="text-gray-400">No paid services yet. Complete a service and receive payment to see your earnings here.</p>
             </div>
           )}

@@ -63,7 +63,7 @@ export default function BookingStep1Page() {
       address,
       customerLat: lat,
       customerLng: lng,
-      scheduledDate: new Date(`${date}T${time}`).toISOString(),
+      scheduledDate: new Date(`₹{date}T${time}`).toISOString(),
       categoryName: category?.name,
       subcategoryName: category?.subcategories?.find((s:any) => s.id === subcategoryId)?.name
     };

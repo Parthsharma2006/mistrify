@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2, CreditCard, FileText, Star, AlertTriangle, DollarSign } from "lucide-react";
+import { Loader2, CreditCard, FileText, Star, AlertTriangle, IndianRupee } from "lucide-react";
 
 export default function AdminTransactionsPage() {
   const [data, setData] = useState<any>(null);
@@ -48,7 +48,7 @@ export default function AdminTransactionsPage() {
       {/* Payments Table */}
       <div className="p-6 rounded-3xl glass-panel mb-8">
         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-green-400" /> Recent Payments
+          <IndianRupee className="w-5 h-5 text-green-400" /> Recent Payments
         </h2>
         {data?.payments?.length > 0 ? (
           <div className="overflow-x-auto">

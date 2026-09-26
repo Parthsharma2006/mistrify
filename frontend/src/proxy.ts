@@ -28,8 +28,12 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Allow public API routes (categories)
-  if (pathname === "/api/categories" || pathname.startsWith("/api/categories/")) {
+  // Allow public API routes (categories, cooperatives)
+  if (
+    pathname === "/api/categories" || pathname.startsWith("/api/categories/") ||
+    pathname === "/api/cooperatives" || pathname.startsWith("/api/cooperatives/") ||
+    pathname === "/api/get-cooperatives" || pathname.startsWith("/api/get-cooperatives/")
+  ) {
     return NextResponse.next();
   }
 
